@@ -20,3 +20,12 @@
   least, I suggest requiring something that isn't EOL.
 - The `bin` entry refers to a file that doesn't exist.
 - Similarly, so does the `start` script.
+
+# UI:
+- Much better than the last time I looked at it!
+- Consider adding syntax highlighting to the inputted vulnetable code and the outputed safe code - it will make it much easier to understand. E.g., you can use a library like https://highlightjs.org/
+- The "planning" section probably shouldn't be in the final "product" the users see. You could either restrict it by auth (e.g., show it just to Or and Zohar after logging in), or at least drop the link from the main page. This isn't a great practice ("security by obscurity doesn't work), but IMHO this is more about the optics than actual security. There's not like there's anything particularly sensitive there.
+- You need a privacy statement there - make it very explicit that any code pasted there is sent to a third party (Anthropic), and while you don't store or reuse it, there's no expectation of secrecy.
+- You probably need an accessibility statement, just to keep the trolls at bay (see, e.g., https://www.w3.org/WAI/planning/statements/)
+- I woder if you want to offer a link back to the GitHub for anyone who'd want to run this locally.
+- I didn't notice anything that does this, but make sure you have some rate-limiting mechanism in place to prevet an attacker from draining your wallet (I assume you're using a single anthrorpic API key behind the scenes?)
