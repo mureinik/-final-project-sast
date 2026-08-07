@@ -1,0 +1,11 @@
+FROM node:26.4.0-alpine
+
+LABEL description="PyScanner — GitHub Action"
+
+WORKDIR /app
+
+COPY package.json ./
+COPY scanner.js ./scanner.js
+COPY entrypoint.js ./entrypoint.js
+
+ENTRYPOINT ["node", "/app/entrypoint.js"]

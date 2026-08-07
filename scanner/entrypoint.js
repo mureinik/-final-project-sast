@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 
-// Allon: where is this even used?
-// the README.md says its the GitHub action entrypoint, but from what I see the action just runs the docker container
-// and the container's entrypoint is pyscanner.js.
-// If this is really unused, this file should be removed.
-
 /**
  * PyScanner — GitHub Action Entrypoint
  * Reads inputs from GitHub Actions environment variables,
