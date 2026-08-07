@@ -8,10 +8,9 @@ import { scanPythonCode, formatTerminalOutput } from "./scanner.js";
 import { readFileSync, writeFileSync, statSync, readdirSync, existsSync } from "fs";
 import { resolve, extname, basename, join } from "path";
 
-// Allon: This duplicates data - instead, read the package.json and get the version from there:
-// import packageJson from './package.json' with { type: 'json' };
-// const VERSION = packageJson.version;
-const VERSION = "1.0.0";
+import packageJson from "./package.json" with { type: "json" };
+
+const VERSION = packageJson.version;
 
 // Allon: There's a lot of boilreplate code here to handle CLI argument parsing.
 // Might be easier to use a 3rd party like https://www.npmjs.com/package/argparse to handle this
