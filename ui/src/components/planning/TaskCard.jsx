@@ -29,9 +29,9 @@ const typeConfig = {
 };
 
 export default function TaskCard({ task, onClick }) {
-  const priority = priorityConfig[task.priority] || priorityConfig.medium;
-  const assignee = assigneeConfig[task.assigned_to] || assigneeConfig.both;
-  const tc = typeConfig[task.type] || typeConfig.task;
+  const priority = priorityConfig[task.priority] ?? priorityConfig.medium;
+  const assignee = assigneeConfig[task.assigned_to] ?? assigneeConfig.both;
+  const tc = typeConfig[task.type] ?? typeConfig.task;
   const TypeIcon = tc.icon;
 
   return (
@@ -56,7 +56,7 @@ export default function TaskCard({ task, onClick }) {
 
       {task.category && (
         <div className="mb-2">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${categoryColors[task.category] || 'bg-muted text-muted-foreground'}`}>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${categoryColors[task.category] ?? 'bg-muted text-muted-foreground'}`}>
             {task.category}
           </span>
         </div>

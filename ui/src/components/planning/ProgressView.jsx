@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { CheckCircle2, Circle, Loader2, Calendar, User, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Circle, Loader2, Calendar, TrendingUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const statusIcon = { done: CheckCircle2, in_progress: Loader2, todo: Circle };
@@ -19,7 +19,7 @@ const categoryColors = {
 };
 
 function TaskRow({ task }) {
-  const Icon = statusIcon[task.status] || Circle;
+  const Icon = statusIcon[task.status] ?? Circle;
   const color = statusColor[task.status];
   const bg = statusBg[task.status];
 
@@ -30,7 +30,7 @@ function TaskRow({ task }) {
         {task.title}
       </span>
       {task.category && (
-        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium hidden sm:block ${categoryColors[task.category] || ''}`}>
+        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium hidden sm:block ${categoryColors[task.category] ?? ''}`}>
           {task.category}
         </span>
       )}

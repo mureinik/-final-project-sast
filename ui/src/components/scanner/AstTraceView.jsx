@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, TreePine, Zap, Shield, Eye, Search, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ChevronRight, TreePine, Zap, Eye, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const ACTION_CONFIG = {
   PARSE:  { color: 'text-secondary',   bg: 'bg-secondary/10',   border: 'border-secondary/20',  label: 'PARSE'  },
@@ -24,8 +24,8 @@ const INDENT = { PARSE: 0, WALK: 1, VISIT: 2, CHECK: 3, FLAG: 3, SAFE: 3 };
 
 function StepRow({ step, index, findings, animated }) {
   const [expanded, setExpanded] = useState(false);
-  const ac = ACTION_CONFIG[step.action] || ACTION_CONFIG.VISIT;
-  const rc = RESULT_CONFIG[step.result] || RESULT_CONFIG.visiting;
+  const ac = ACTION_CONFIG[step.action] ?? ACTION_CONFIG.VISIT;
+  const rc = RESULT_CONFIG[step.result] ?? RESULT_CONFIG.visiting;
   const ResultIcon = rc.icon;
   const isFlagged = step.result === 'flagged' || step.result === 'vulnerable';
   const finding = step.finding_id ? findings.find(f => f.ruleId === step.finding_id) : null;

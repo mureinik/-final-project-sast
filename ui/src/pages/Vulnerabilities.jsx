@@ -24,7 +24,7 @@ const severityFilters = [
 
 function VulnRow({ v }) {
   const [open, setOpen] = useState(false);
-  const sev = severityConfig[v.severity] || severityConfig.medium;
+  const sev = severityConfig[v.severity] ?? severityConfig.medium;
 
   return (
     <div className="border border-border/50 rounded-lg overflow-hidden bg-card">

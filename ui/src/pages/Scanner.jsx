@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Terminal, Play, RotateCcw, AlertTriangle, CheckCircle,
-  Info, Loader2, ChevronRight, Download, FileCode, Shield, TreePine, ShieldCheck
+  Loader2, ChevronRight, Download, FileCode, Shield, TreePine, ShieldCheck
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import AstTraceView from '../components/scanner/AstTraceView';
@@ -664,8 +664,8 @@ export default function Scanner() {
       return;
     }
 
-    const findings = scanResult?.findings || [];
-    const summary = scanResult?.summary || {};
+    const findings = scanResult?.findings ?? [];
+    const summary = scanResult?.summary ?? {};
 
     await addLine({ type: 'info', text: `[*] Lines analyzed: ${summary.linesAnalyzed ?? code.split('\n').length}` }, 1300);
     await addLine({ type: 'divider' }, 1450);
@@ -711,7 +711,7 @@ export default function Scanner() {
     setRightTab('terminal');
   };
 
-  const findings = result?.findings || [];
+  const findings = result?.findings ?? [];
 
   return (
     <div className="h-full flex flex-col p-4 gap-3 overflow-hidden">
@@ -740,7 +740,7 @@ export default function Scanner() {
             <option value="custom">Custom Code (free input)</option>
             <optgroup label="── Vulnerability Samples ──">
               {Object.keys(SAMPLE_CODES).map((k) => (
-                <option key={k} value={k}>{SAMPLE_LABELS[k] || k.replace(/_/g, ' ')}</option>
+                <option key={k} value={k}>{SAMPLE_LABELS[k] ?? k.replace(/_/g, ' ')}</option>
               ))}
             </optgroup>
           </select>
@@ -886,7 +886,7 @@ export default function Scanner() {
                       })}
                     </div>
                     {findings.map((f, idx) => {
-                      const sc = severityColors[f.severity] || severityColors.medium;
+                      const sc = severityColors[f.severity] ?? severityColors.medium;
                       return (
                         <div key={idx}>
                           <button

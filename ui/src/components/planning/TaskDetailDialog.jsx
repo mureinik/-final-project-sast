@@ -28,7 +28,7 @@ export default function TaskDetailDialog({ task, onClose, onUpdate, onDelete }) 
 
   if (!task) return null;
 
-  const tc = typeConfig[task.type] || typeConfig.task;
+  const tc = typeConfig[task.type] ?? typeConfig.task;
   const TypeIcon = tc.icon;
 
   const handleSave = () => {
