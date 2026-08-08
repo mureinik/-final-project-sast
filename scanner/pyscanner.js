@@ -9,11 +9,22 @@ import { readFileSync, writeFileSync, statSync, readdirSync, existsSync } from "
 import { resolve, extname, basename, join } from "path";
 
 import packageJson from "./package.json" with { type: "json" };
+import { parseArgs as parseNodeArgs } from "node:util";
 
 const VERSION = packageJson.version;
+const SEVERITY_ORDER = ["low", "medium", "high", "critical"];
 
-// Allon: There's a lot of boilreplate code here to handle CLI argument parsing.
-// Might be easier to use a 3rd party like https://www.npmjs.com/package/argparse to handle this
+const OUTPUT_FORMATS = ["text", "json", "sarif"];
+const DEFAULT_IGNORED_DIRECTORIES = [
+  "node_modules",
+  "__pycache__",
+  ".git",
+  ".venv",
+  "venv",
+  "env",
+];
+
+
 function printHelp() {
   console.log(`
 PyScanner v${VERSION} — Python SAST Scanner (CWE Top 25, 2025)
@@ -34,6 +45,7 @@ OPTIONS:
   --fail-on <level>       Exit with code 1 if findings at or above this severity
   --stdin                 Read Python code from stdin
   --include-safe-code     Include fixed safe code in JSON/SARIF output
+  --ignore-dir <name>     Additional directory to ignore (repeatable)
 
 EXAMPLES:
   pyscanner app.py
@@ -49,47 +61,147 @@ EXIT CODES:
 `);
 }
 
-function parseArgs(argv) {
-  const args = argv.slice(2);
-  const opts = {
-    files: [],
-    verbose: false,
-    color: true,
-    output: "text",
-    outFile: null,
-    severity: "low",
-    failOn: null,
-    stdin: false,
-    includeSafeCode: false,
-  };
-
-  const severityOrder = ["low", "medium", "high", "critical"];
-
-  // Allon: specifically, there's a bug here in handling duplicate or contradicting arguments. E.g., think of:
-  // pyscanner --fail-on high --fail-on low app.py
-  // Only the last --fail-on will be handled.
-  for (let i = 0; i < args.length; i++) {
-    const a = args[i];
-    if (a === "-h" || a === "--help") { printHelp(); process.exit(0); }
-    else if (a === "-v" || a === "--version") { console.log(`PyScanner v${VERSION}`); process.exit(0); }
-    else if (a === "--verbose") opts.verbose = true;
-    else if (a === "--no-color") opts.color = false;
-    else if (a === "--stdin") opts.stdin = true;
-    else if (a === "--include-safe-code") opts.includeSafeCode = true;
-    else if (a === "--output" && args[i+1]) opts.output = args[++i];
-    else if (a === "--out-file" && args[i+1]) opts.outFile = args[++i];
-    else if (a === "--severity" && args[i+1]) opts.severity = args[++i];
-    else if (a === "--fail-on" && args[i+1]) opts.failOn = args[++i];
-    else if (!a.startsWith("-")) opts.files.push(a);
-  }
-
-  if (!severityOrder.includes(opts.severity)) {
-    console.error(`Invalid severity: ${opts.severity}. Use: low, medium, high, critical`);
-    process.exit(2);
-  }
-
-  return opts;
+function argumentError(message) {
+  console.error(`Argument error: ${message}`);
+  process.exit(2);
 }
+
+function parseArgs(argv) {
+  let parsed;
+
+  try {
+    parsed = parseNodeArgs({
+      args: argv.slice(2),
+      allowPositionals: true,
+      strict: true,
+      tokens: true,
+      options: {
+        help: {
+          type: "boolean",
+          short: "h",
+        },
+        version: {
+          type: "boolean",
+          short: "v",
+        },
+        verbose: {
+          type: "boolean",
+        },
+        "no-color": {
+          type: "boolean",
+        },
+        output: {
+          type: "string",
+        },
+        "out-file": {
+          type: "string",
+        },
+        severity: {
+          type: "string",
+        },
+        "fail-on": {
+          type: "string",
+        },
+        stdin: {
+          type: "boolean",
+        },
+        "include-safe-code": {
+          type: "boolean",
+        },
+        "ignore-dir": {
+          type: "string",
+          multiple: true,
+        },
+      },
+    });
+  } catch (error) {
+    argumentError(error.message);
+  }
+
+  const { values, positionals, tokens } = parsed;
+
+  if (values.help) {
+    printHelp();
+    process.exit(0);
+  }
+
+  if (values.version) {
+    console.log(`PyScanner v${VERSION}`);
+    process.exit(0);
+  }
+
+  const singleValueOptions = new Set([
+    "output",
+    "out-file",
+    "severity",
+    "fail-on",
+  ]);
+  const seenOptions = new Set();
+
+  for (const token of tokens) {
+    if (
+      token.kind !== "option" ||
+      !singleValueOptions.has(token.name)
+    ) {
+      continue;
+    }
+
+    if (seenOptions.has(token.name)) {
+      argumentError(`--${token.name} may only be provided once.`);
+    }
+
+    seenOptions.add(token.name);
+  }
+
+  const output = values.output ?? "text";
+  const severity = values.severity ?? "low";
+  const failOn = values["fail-on"] ?? null;
+  const stdin = values.stdin ?? false;
+
+  if (!OUTPUT_FORMATS.includes(output)) {
+    argumentError(
+      `Invalid output format: ${output}. Use: ${OUTPUT_FORMATS.join(", ")}`
+    );
+  }
+
+  if (!SEVERITY_ORDER.includes(severity)) {
+    argumentError(
+      `Invalid severity: ${severity}. Use: ${SEVERITY_ORDER.join(", ")}`
+    );
+  }
+
+  if (failOn !== null && !SEVERITY_ORDER.includes(failOn)) {
+    argumentError(
+      `Invalid fail-on severity: ${failOn}. Use: ${SEVERITY_ORDER.join(", ")}`
+    );
+  }
+
+  if (stdin && positionals.length > 0) {
+    argumentError("--stdin cannot be combined with file or directory paths.");
+  }
+
+  if (!stdin && positionals.length === 0) {
+    printHelp();
+    process.exit(0);
+  }
+
+  return {
+    files: positionals,
+    verbose: values.verbose ?? false,
+    color: !(values["no-color"] ?? false),
+    output,
+    outFile: values["out-file"] ?? null,
+    severity,
+    failOn,
+    stdin,
+    includeSafeCode: values["include-safe-code"] ?? false,
+    ignoredDirectories: new Set([
+      ...DEFAULT_IGNORED_DIRECTORIES,
+      ...(values["ignore-dir"] ?? []),
+    ]),
+  };
+}
+
 
 async function readStdin() {
   return new Promise((resolve) => {
@@ -135,32 +247,30 @@ function collectPythonFiles(pathArg) {
 }
 
 function filterBySeverity(findings, minSeverity) {
-  // Allon: I'd extract a global severityOrder instead of redefining it multiple times
-  const order = ["low", "medium", "high", "critical"];
-  const minIdx = order.indexOf(minSeverity);
-  return findings.filter((f) => order.indexOf(f.severity) >= minIdx);
+  const minIdx = SEVERITY_ORDER.indexOf(minSeverity);
+  return findings.filter(
+    (finding) => SEVERITY_ORDER.indexOf(finding.severity) >= minIdx
+  );
 }
 
 function buildSummary(findings) {
-  // Allon: Here's a neat trick to initialize the summaries and not duplicate the severity names, if you have a global
-  // seveirtyOrder variable:
-  // const summary = Object.fromEntries(severityOrder.map(x => [x, 0]))
-  // And then you can add on the total
-  const summary = { total: findings.length, critical: 0, high: 0, medium: 0, low: 0 };
+  const summary = {
+    total: findings.length,
+    ...Object.fromEntries(
+      SEVERITY_ORDER.map((severity) => [severity, 0])
+    ),
+  };
+
   for (const f of findings) {
     if (summary[f.severity] !== undefined) summary[f.severity]++;
   }
+
   return summary;
 }
 
 async function main() {
   const opts = parseArgs(process.argv);
 
-  // Allon: This is part of the argument handling logic, it should be in `parseArgs`
-  if (!opts.stdin && opts.files.length === 0) {
-    printHelp();
-    process.exit(0);
-  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -192,8 +302,9 @@ async function main() {
 
   const allResults = [];
   let hasHighSeverityFinding = false;
-  const failOnOrder = ["low", "medium", "high", "critical"];
-  const failOnIdx = opts.failOn ? failOnOrder.indexOf(opts.failOn) : 0;
+ const failOnIdx = opts.failOn
+  ? SEVERITY_ORDER.indexOf(opts.failOn)
+  : 0;
 
   for (const { path: fp, code } of filePairs) {
     if (opts.output === "text") {
@@ -201,6 +312,7 @@ async function main() {
     }
 
     try {
+
       // Allon: this is going to be pretty slow. Instead, I'd return a promise from `scanPythonCode` and
       // use Promise.all to wait on all of them in parallel
       // Moreover, it makes sense to have a single system prompt and an array of use prompts, one per file,
@@ -219,23 +331,12 @@ async function main() {
 
       allResults.push({ file: fp, result });
 
-      // Allon: you can break after finding the first vuln that has sufficient severity.
-      // Alternatively, a more concise way of writing this could be something like
-      // const hashHighSeverityFinding =
-      //   result.findings.some(f => failOnOrder.indexOf(f.severity) >= failOnIdx);
-
-      // Check fail-on
-      if (opts.failOn) {
-        for (const f of result.findings) {
-          if (failOnOrder.indexOf(f.severity) >= failOnIdx) {
-            hasHighSeverityFinding = true;
-          }
-        }
-      // Allon: You don't need the else branch.
-      // If opts.failOn is a false-y, failOnIdx is initialized to 0, and the block above still works
-      } else if (result.findings.length > 0) {
-        hasHighSeverityFinding = true;
-      }
+      hasHighSeverityFinding =
+  hasHighSeverityFinding ||
+  result.findings.some(
+    (finding) =>
+      SEVERITY_ORDER.indexOf(finding.severity) >= failOnIdx
+  );
 
       // Print text output per file
       if (opts.output === "text") {
