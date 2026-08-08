@@ -20,28 +20,28 @@ Covers all **CWE Top 25 (2025)** vulnerability patterns.
 ## CWE Coverage
 
 | Rank | CWE | Vulnerability | Detected |
-|------|-----|---------------|----------|
-| 1 | CWE-79 | Cross-site Scripting (XSS) | ✅ |
-| 2 | CWE-89 | SQL Injection | ✅ |
-| 3 | CWE-352 | CSRF | ✅ |
-| 4 | CWE-862 | Missing Authorization | ✅ |
-| 5 | CWE-787 | Out-of-bounds Write | ⚠️ Python-limited |
-| 6 | CWE-22 | Path Traversal | ✅ |
-| 7 | CWE-416 | Use After Free | ⚠️ Python-limited |
-| 8 | CWE-125 | Out-of-bounds Read | ⚠️ Python-limited |
-| 9 | CWE-78 | OS Command Injection | ✅ |
-| 10 | CWE-94 | Code Injection (eval/exec) | ✅ |
-| 12 | CWE-434 | Unrestricted File Upload | ✅ |
-| 15 | CWE-502 | Insecure Deserialization | ✅ |
-| 17 | CWE-863 | Incorrect Authorization | ✅ |
-| 18 | CWE-20 | Improper Input Validation | ✅ |
-| 19 | CWE-284 | Improper Access Control | ✅ |
-| 20 | CWE-200 | Sensitive Info Exposure | ✅ |
-| 21 | CWE-306 | Missing Authentication | ✅ |
-| 22 | CWE-918 | SSRF | ✅ |
-| 23 | CWE-77 | Command Injection | ✅ |
-| 24 | CWE-639 | IDOR / AuthZ Bypass | ✅ |
-| 25 | CWE-770 | Resource Exhaustion | ✅ |
+| --- | --- | --- | --- |
+| 1 | [CWE-79](https://cwe.mitre.org/data/definitions/79.html) | Cross-site Scripting (XSS) | ✅ |
+| 2 | [CWE-89](https://cwe.mitre.org/data/definitions/89.html) | SQL Injection | ✅ |
+| 3 | [CWE-352](https://cwe.mitre.org/data/definitions/352.html) | CSRF | ✅ |
+| 4 | [CWE-862](https://cwe.mitre.org/data/definitions/862.html) | Missing Authorization | ✅ |
+| 5 | [CWE-787](https://cwe.mitre.org/data/definitions/787.html) | Out-of-bounds Write | ⚠️ Python-limited |
+| 6 | [CWE-22](https://cwe.mitre.org/data/definitions/22.html) | Path Traversal | ✅ |
+| 7 | [CWE-416](https://cwe.mitre.org/data/definitions/416.html) | Use After Free | ⚠️ Python-limited |
+| 8 | [CWE-125](https://cwe.mitre.org/data/definitions/125.html) | Out-of-bounds Read | ⚠️ Python-limited |
+| 9 | [CWE-78](https://cwe.mitre.org/data/definitions/78.html) | OS Command Injection | ✅ |
+| 10 | [CWE-94](https://cwe.mitre.org/data/definitions/94.html) | Code Injection (eval/exec) | ✅ |
+| 12 | [CWE-434](https://cwe.mitre.org/data/definitions/434.html) | Unrestricted File Upload | ✅ |
+| 15 | [CWE-502](https://cwe.mitre.org/data/definitions/502.html) | Insecure Deserialization | ✅ |
+| 17 | [CWE-863](https://cwe.mitre.org/data/definitions/863.html) | Incorrect Authorization | ✅ |
+| 18 | [CWE-20](https://cwe.mitre.org/data/definitions/20.html) | Improper Input Validation | ✅ |
+| 19 | [CWE-284](https://cwe.mitre.org/data/definitions/284.html) | Improper Access Control | ✅ |
+| 20 | [CWE-200](https://cwe.mitre.org/data/definitions/200.html) | Sensitive Information Exposure | ✅ |
+| 21 | [CWE-306](https://cwe.mitre.org/data/definitions/306.html) | Missing Authentication | ✅ |
+| 22 | [CWE-918](https://cwe.mitre.org/data/definitions/918.html) | SSRF | ✅ |
+| 23 | [CWE-77](https://cwe.mitre.org/data/definitions/77.html) | Command Injection | ✅ |
+| 24 | [CWE-639](https://cwe.mitre.org/data/definitions/639.html) | IDOR / Authorization Bypass | ✅ |
+| 25 | [CWE-770](https://cwe.mitre.org/data/definitions/770.html) | Resource Exhaustion | ✅ |
 
 > ⚠️ Memory-safety CWEs (787, 416, 125, 120, 121, 122) are less relevant to pure Python but flagged when using ctypes or C extensions.
 
@@ -50,7 +50,7 @@ Covers all **CWE Top 25 (2025)** vulnerability patterns.
 ## Installation (CLI)
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 26+
 - An [Anthropic API key](https://console.anthropic.com/)
 
 ### Install from npm (once published)
@@ -60,10 +60,10 @@ npm install -g pyscanner
 
 ### Install from source
 ```bash
-git clone https://github.com/your-org/pyscanner.git
-cd pyscanner
+git clone https://github.com/Final-project-Static-Security-Analysis/-final-project-sast.git
+cd -final-project-sast/scanner
 npm install
-npm link   # makes 'pyscanner' available globally
+npm link
 ```
 
 ### Set API key
@@ -175,7 +175,7 @@ jobs:
 
       - name: PyScanner
         id: scan
-        uses: your-org/pyscanner@v1
+        uses: Final-project-Static-Security-Analysis/-final-project-sast/scanner@main
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           fail_on: high

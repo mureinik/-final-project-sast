@@ -1,6 +1,6 @@
 name: "PyScanner — Python Security Scanner"
 description: "SAST scanner for Python code covering CWE Top 25 (2025), powered by Claude AI"
-author: "your-org"
+author: "Or Shalem and Zohar Sidon"
 
 branding:
   icon: "shield"
