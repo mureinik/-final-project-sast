@@ -60,8 +60,8 @@ npm install -g pyscanner
 
 ### Install from source
 ```bash
-git clone https://github.com/Final-project-Static-Security-Analysis/-final-project-sast.git
-cd -final-project-sast/scanner
+git clone https://github.com/Final-project-Static-Security-Analysis/final-project-sast.git
+cd final-project-sast/scanner
 npm install
 npm link
 ```
@@ -175,7 +175,7 @@ jobs:
 
       - name: PyScanner
         id: scan
-        uses: Final-project-Static-Security-Analysis/-final-project-sast/scanner@main
+        uses: Final-project-Static-Security-Analysis/final-project-sast/scanner@main
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           fail_on: high
