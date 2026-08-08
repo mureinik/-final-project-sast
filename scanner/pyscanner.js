@@ -5,8 +5,13 @@
  */
 
 import { scanPythonCode, formatTerminalOutput } from "./scanner.js";
-import { readFileSync, writeFileSync, statSync, readdirSync, existsSync } from "fs";
-import { resolve, extname, basename, join } from "path";
+import {
+  readFile,
+  writeFile,
+  stat,
+  readdir,
+} from "node:fs/promises";
+import { resolve, extname, basename, join } from "node:path";
 
 import packageJson from "./package.json" with { type: "json" };
 import { parseArgs as parseNodeArgs } from "node:util";
@@ -212,38 +217,66 @@ async function readStdin() {
   });
 }
 
-// Allon: Worth considering using async I/O, and returning a Promise from here
-function collectPythonFiles(pathArg) {
-  const abs = resolve(pathArg);
-  if (!existsSync(abs)) {
-    console.error(`Path not found: ${abs}`);
-    process.exit(2);
-  }
-  const stat = statSync(abs);
-  if (stat.isFile()) {
-    if (extname(abs) !== ".py") {
-      console.error(`Not a Python file: ${abs}`);
-      process.exit(2);
+async function collectPythonFiles(pathArg, ignoredDirectories) {
+  const absolutePath = resolve(pathArg);
+
+  let pathStats;
+
+  try {
+    pathStats = await stat(absolutePath);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(`Path not found: ${absolutePath}`);
     }
-    return [abs];
+
+    throw error;
   }
-  if (stat.isDirectory()) {
-    const files = [];
-    function walk(dir) {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name);
-        // Allon: I'd externalize the directories to be ignored to a config option, with these as the default
-        if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules" && entry.name !== "__pycache__") {
-          walk(full);
-        } else if (entry.isFile() && entry.name.endsWith(".py")) {
-          files.push(full);
+
+  if (pathStats.isFile()) {
+    if (extname(absolutePath) !== ".py") {
+      throw new Error(`Not a Python file: ${absolutePath}`);
+    }
+
+    return [absolutePath];
+  }
+
+  if (!pathStats.isDirectory()) {
+    return [];
+  }
+
+  async function walk(directory) {
+    const entries = await readdir(directory, {
+      withFileTypes: true,
+    });
+
+    const discoveredFiles = await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+          const shouldIgnore =
+            entry.name.startsWith(".") ||
+            ignoredDirectories.has(entry.name);
+
+          if (shouldIgnore) {
+            return [];
+          }
+
+          return walk(fullPath);
         }
-      }
-    }
-    walk(abs);
-    return files;
+
+        if (entry.isFile() && entry.name.endsWith(".py")) {
+          return [fullPath];
+        }
+
+        return [];
+      })
+    );
+
+    return discoveredFiles.flat();
   }
-  return [];
+
+  return walk(absolutePath);
 }
 
 function filterBySeverity(findings, minSeverity) {
@@ -279,20 +312,31 @@ async function main() {
     process.exit(2);
   }
 
-  // Collect files
-  let filePairs = []; // [{path, code}]
+  // Collect and read files
+  let filePairs;
 
   if (opts.stdin) {
-    if (opts.output === "text" && opts.color) process.stderr.write("Reading from stdin...\n");
-    const code = await readStdin();
-    filePairs.push({ path: "stdin", code });
-  } else {
-    for (const f of opts.files) {
-      for (const fp of collectPythonFiles(f)) {
-        // Allon: Consider using async-io here
-        filePairs.push({ path: fp, code: readFileSync(fp, "utf8") });
-      }
+    if (opts.output === "text" && opts.color) {
+      process.stderr.write("Reading from stdin...\n");
     }
+
+    const code = await readStdin();
+    filePairs = [{ path: "stdin", code }];
+  } else {
+    const collectedPaths = await Promise.all(
+      opts.files.map((file) =>
+        collectPythonFiles(file, opts.ignoredDirectories)
+      )
+    );
+
+    const filePaths = collectedPaths.flat();
+
+    filePairs = await Promise.all(
+      filePaths.map(async (filePath) => ({
+        path: filePath,
+        code: await readFile(filePath, "utf8"),
+      }))
+    );
   }
 
   if (filePairs.length === 0) {
@@ -300,59 +344,79 @@ async function main() {
     process.exit(2);
   }
 
-  const allResults = [];
-  let hasHighSeverityFinding = false;
- const failOnIdx = opts.failOn
-  ? SEVERITY_ORDER.indexOf(opts.failOn)
-  : 0;
+   const failOnIdx = opts.failOn
+    ? SEVERITY_ORDER.indexOf(opts.failOn)
+    : 0;
 
-  for (const { path: fp, code } of filePairs) {
-    if (opts.output === "text") {
-      process.stderr.write(`\n⏳ Scanning ${basename(fp)}...\n`);
-    }
-
-    try {
-
-      // Allon: this is going to be pretty slow. Instead, I'd return a promise from `scanPythonCode` and
-      // use Promise.all to wait on all of them in parallel
-      // Moreover, it makes sense to have a single system prompt and an array of use prompts, one per file,
-      // and send them all in a single request to the Anthropic API. This will reduce the number of API calls and
-      // speed up the scanning process.
-      // With the current design, the same system prompt is sent for every scanned file
-      const result = await scanPythonCode(code, basename(fp));
-
-      // Filter by severity
-      result.findings = filterBySeverity(result.findings || [], opts.severity);
-      result.summary = buildSummary(result.findings);
-
-      if (!opts.includeSafeCode) {
-        delete result.safe_code;
+  const scanResults = await Promise.all(
+    filePairs.map(async ({ path: filePath, code }) => {
+      if (opts.output === "text") {
+        process.stderr.write(
+          `\n⏳ Scanning ${basename(filePath)}...\n`
+        );
       }
 
-      allResults.push({ file: fp, result });
+      try {
+        const result = await scanPythonCode(
+          code,
+          basename(filePath)
+        );
 
-      hasHighSeverityFinding =
-  hasHighSeverityFinding ||
-  result.findings.some(
-    (finding) =>
-      SEVERITY_ORDER.indexOf(finding.severity) >= failOnIdx
+        result.findings = filterBySeverity(
+          result.findings || [],
+          opts.severity
+        );
+        result.summary = buildSummary(result.findings);
+
+        if (!opts.includeSafeCode) {
+          delete result.safe_code;
+        }
+
+        return {
+          file: filePath,
+          result,
+        };
+      } catch (error) {
+        console.error(
+          `❌ Error scanning ${filePath}: ${error.message}`
+        );
+
+        return {
+          file: filePath,
+          error,
+        };
+      }
+    })
   );
 
-      // Print text output per file
-      if (opts.output === "text") {
-        const formatted = formatTerminalOutput(result, {
-          color: opts.color,
-          verbose: opts.verbose,
-        });
-        if (opts.outFile) {
-          // accumulate for later
-        } else {
-          process.stdout.write(formatted);
-        }
-      }
-    } catch (err) {
-      console.error(`❌ Error scanning ${fp}: ${err.message}`);
-      if (opts.output !== "text") process.exit(2);
+  const failedScans = scanResults.filter(
+    ({ error }) => error !== undefined
+  );
+
+  if (failedScans.length > 0 && opts.output !== "text") {
+    process.exit(2);
+  }
+
+  const allResults = scanResults.filter(
+    ({ result }) => result !== undefined
+  );
+
+  const hasHighSeverityFinding = allResults.some(
+    ({ result }) =>
+      result.findings.some(
+        (finding) =>
+          SEVERITY_ORDER.indexOf(finding.severity) >= failOnIdx
+      )
+  );
+
+  if (opts.output === "text" && !opts.outFile) {
+    for (const { result } of allResults) {
+      const formatted = formatTerminalOutput(result, {
+        color: opts.color,
+        verbose: opts.verbose,
+      });
+
+      process.stdout.write(formatted);
     }
   }
 
@@ -363,7 +427,7 @@ async function main() {
       : { files: allResults.map(r => ({ file: r.file, ...r.result })) };
     const json = JSON.stringify(output, null, 2);
     if (opts.outFile) {
-      writeFileSync(opts.outFile, json);
+      await writeFile(opts.outFile, json, "utf8");
       console.error(`✅ JSON written to ${opts.outFile}`);
     } else {
       process.stdout.write(json + "\n");
@@ -377,7 +441,7 @@ async function main() {
     };
     const sarifJson = JSON.stringify(merged, null, 2);
     if (opts.outFile) {
-      writeFileSync(opts.outFile, sarifJson);
+      await writeFile(opts.outFile, sarifJson, "utf8");
       console.error(`✅ SARIF written to ${opts.outFile}`);
     } else {
       process.stdout.write(sarifJson + "\n");
@@ -386,7 +450,7 @@ async function main() {
     const lines = allResults.map(r =>
       formatTerminalOutput(r.result, { color: false, verbose: opts.verbose })
     ).join("\n");
-    writeFileSync(opts.outFile, lines);
+    await writeFile(opts.outFile, lines, "utf8");
     console.error(`✅ Report written to ${opts.outFile}`);
   }
 
