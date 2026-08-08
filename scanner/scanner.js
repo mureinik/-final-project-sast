@@ -124,9 +124,38 @@ POSITIVE EXAMPLES (these ARE vulnerable, DO flag):
  * Scan Python code for security vulnerabilities
  * @param {string} code - Python source code to analyze
  * @param {string} filename - Original filename (for context)
+ *  * @param {Object} [options] - Anthropic request options
+ * @param {string} [options.apiKey] - Anthropic API key
+ * @param {string} [options.baseUrl] - Anthropic API base URL
+ * @param {string} [options.anthropicVersion] - Anthropic API version
+ * @param {string} [options.model] - Claude model name
+ * @param {number} [options.maxTokens] - Maximum response tokens
  * @returns {Promise<Object>} - Scan results
  */
-export async function scanPythonCode(code, filename = "unknown.py") {
+export async function scanPythonCode(
+  code,
+  filename = "unknown.py",
+  options = {}
+) {
+  const {
+    apiKey = process.env.ANTHROPIC_API_KEY,
+    baseUrl =
+      process.env.ANTHROPIC_BASE_URL ??
+      "https://api.anthropic.com",
+    anthropicVersion =
+      process.env.ANTHROPIC_VERSION ??
+      "2023-06-01",
+    model =
+      process.env.ANTHROPIC_MODEL ??
+      "claude-sonnet-4-6",
+    maxTokens = 4096,
+  } = options;
+
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY is required to scan Python code."
+    );
+  }
   const userMessage = `Analyze this Python file for security vulnerabilities: ${filename}
 
 \`\`\`python
@@ -135,19 +164,26 @@ ${code}
 
 Perform thorough AST-style analysis. Check ALL CWE Top 25 patterns listed. Return ONLY valid JSON.`;
 
-  // Allon: consider using https://www.npmjs.com/package/@anthropic-ai/sdk
-  // This will both remove some boiler plate, and give you support for things like $ANTHROPIC_BASE_URL for free
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const apiUrl =
+    `${baseUrl.replace(/\/$/, "")}/v1/messages`;
+
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "anthropic-version": "2023-06-01", // Allon: this should probably be controllable by the caller
+      "x-api-key": apiKey,
+      "anthropic-version": anthropicVersion,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6", // Allon: this should almost definitely be controllable by the caller
-      max_tokens: 4096,
+      model,
+      max_tokens: maxTokens,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userMessage }],
+      messages: [
+        {
+          role: "user",
+          content: userMessage,
+        },
+      ],
     }),
   });
 
@@ -182,7 +218,7 @@ Perform thorough AST-style analysis. Check ALL CWE Top 25 patterns listed. Retur
     scanned_at: new Date().toISOString(),
     scanner_version: "1.0.0",
     lines_of_code: code.split("\n").length,
-    model: "claude-sonnet-4-6",
+    model,
   };
 
   // Ensure SARIF rules are populated from findings
