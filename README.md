@@ -37,24 +37,38 @@ The project demonstrates the complete workflow used by modern SAST tools:
 **Source Code → AI-Assisted Security Analysis → SARIF Generation → Findings Visualization**
 
 
-
 ## Architecture
 
+The project currently has two scanning entry points because the CLI and the web application run in different deployment environments.
+
 ```text
-Python Source Code
+CLI / GitHub Action
         │
         ▼
- PyScanner CLI / GitHub Action
+scanner/scanner.js
         │
         ▼
- Claude-Based Security Analysis
+ Text / JSON / SARIF
+
+
+React Dashboard
         │
         ▼
- JSON / SARIF Results
+Base44 scanPythonCode function
         │
         ▼
- React Dashboard
+ Dashboard Findings
 ```
+
+The CLI and GitHub Action use the Node.js scanner engine in `scanner/scanner.js`. The React dashboard uses a Base44 backend function because it runs in the Base44 deployment environment and cannot directly execute the local CLI module.
+
+### Known Limitation
+
+The scanner prompt and response-processing logic currently exist in both the Node.js scanner and the Base44 function. This duplication can cause the two scanning paths to behave differently as the project evolves.
+
+### Future Architecture
+
+A future version should expose the scanner engine through a shared HTTP API. The CLI, GitHub Action, and React dashboard would then call the same service, providing one source of truth for prompts, model configuration, and result processing.
 
 
 
