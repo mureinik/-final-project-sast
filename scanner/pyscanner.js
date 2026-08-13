@@ -177,7 +177,7 @@ function parseArgs(argv) {
 
   if (failOn !== null && !SEVERITY_ORDER.includes(failOn)) {
     argumentError(
-      `Invalid fail-on severity: ${failOn}. Use: ${SEVERITY_ORDER.join(", ")}`
+      `Invalid fail-on severity: ${failOn}. Use one of: ${SEVERITY_ORDER.join(", ")}`
     );
   }
 
