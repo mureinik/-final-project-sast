@@ -66,11 +66,43 @@ npm install
 npm link
 ```
 
-### Set API key
+### Anthropic Configuration
+
+PyScanner uses the Anthropic API for vulnerability analysis. The Anthropic configuration can be customized using the following environment variables:
+
+| Environment Variable | Required | Description |
+|----------------------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | API key used to authenticate with the Anthropic API. |
+| `ANTHROPIC_MODEL` | No | Overrides the default Anthropic model used by the scanner (`claude-sonnet-4-6`). |
+| `ANTHROPIC_BASE_URL` | No | Overrides the default Anthropic API base URL. This is useful for organizations that access Anthropic models through their own gateway or proxy. |
+| `ANTHROPIC_VERSION` | No | Overrides the default Anthropic API version used by the scanner (`2023-06-01`). |
+
+Set the required API key:
+
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
-# Or add to ~/.bashrc / ~/.zshrc
 ```
+
+To use a different Anthropic model:
+
+```bash
+export ANTHROPIC_MODEL=your-model-name
+```
+
+To route requests through an organization's custom gateway:
+
+```bash
+export ANTHROPIC_BASE_URL=https://your-organization-gateway.example.com
+```
+
+If needed, the Anthropic API version can also be overridden:
+
+```bash
+export ANTHROPIC_VERSION=your-api-version
+```
+
+These environment variables can also be added to `~/.bashrc` or `~/.zshrc` to persist the configuration between terminal sessions.
+
 
 
 ## CLI Usage

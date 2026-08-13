@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 /**
  * PyScanner — GitHub Action Entrypoint
  * Reads inputs from GitHub Actions environment variables,
