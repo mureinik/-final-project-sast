@@ -165,7 +165,7 @@ function parseArgs(argv) {
 
   if (!OUTPUT_FORMATS.includes(output)) {
     argumentError(
-      `Invalid output format: ${output}. Use: ${OUTPUT_FORMATS.join(", ")}`
+      `Invalid output format: ${output}. Use one of: ${OUTPUT_FORMATS.join(", ")}`
     );
   }
 
